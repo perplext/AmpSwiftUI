@@ -1,0 +1,44 @@
+# Core Dependencies
+frida-tools>=16.0.0
+objection>=1.11.0
+frida>=16.0.0
+
+# Binary Analysis
+capstone>=5.0.0
+unicorn>=2.0.0
+pycryptodome>=3.19.0
+pyelftools>=0.30
+
+# Network & API Testing
+mitmproxy>=10.0.0
+requests>=2.31.0
+websocket-client>=1.6.0
+graphql-core>=3.2.0
+pyjwt>=2.8.0
+cryptography>=41.0.0
+
+# AWS Tools
+boto3>=1.28.0
+awscli>=1.29.0
+botocore>=1.31.0
+
+# iOS Specific
+pymobiledevice3>=2.0.0
+ipa-analyzer>=0.2.0
+
+# Utility Libraries
+colorama>=0.4.6
+tabulate>=0.9.0
+tqdm>=4.66.0
+pyyaml>=6.0
+click>=8.1.0
+rich>=13.7.0
+
+# Security Analysis
+yara-python>=4.3.0
+androguard>=3.4.0
+pyopenssl>=23.3.0
+
+# Documentation
+mkdocs>=1.5.0
+mkdocs-material>=9.4.0

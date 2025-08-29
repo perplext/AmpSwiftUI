@@ -1,0 +1,77 @@
+id: mobile-api-auth-bypass
+info:
+  name: Mobile API Authentication Bypass
+  author: AmpSwiftUI
+  severity: high
+  description: Tests for authentication bypass vulnerabilities in mobile APIs
+  tags: mobile,api,auth,ios,amplify
+
+variables:
+  user_agents:
+    - "MyApp/1.0 (com.example.myapp; build:1; iOS 17.0.0) Alamofire/5.6.1"
+    - "aws-amplify/5.0.0 iOS/17.0"
+    - "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15"
+
+http:
+  - raw:
+      - |
+        GET {{BaseURL}}/api/user/profile HTTP/1.1
+        Host: {{Hostname}}
+        User-Agent: {{user_agents}}
+        X-Device-Type: iPhone
+        X-OS-Version: iOS 17.0
+        Accept: application/json
+        
+      - |
+        GET {{BaseURL}}/api/admin/users HTTP/1.1
+        Host: {{Hostname}}
+        User-Agent: {{user_agents}}
+        Authorization: Bearer invalid_token
+        X-Device-Type: iPhone
+        Accept: application/json
+        
+      - |
+        POST {{BaseURL}}/api/auth/refresh HTTP/1.1
+        Host: {{Hostname}}
+        User-Agent: {{user_agents}}
+        Content-Type: application/json
+        X-Device-Type: iPhone
+        
+        {"refresh_token":"expired_token"}
+        
+      - |
+        GET {{BaseURL}}/api/user/1 HTTP/1.1
+        Host: {{Hostname}}
+        User-Agent: {{user_agents}}
+        Authorization: 
+        X-Device-Type: iPhone
+        Accept: application/json
+
+    matchers-condition: or
+    matchers:
+      - type: word
+        part: body
+        words:
+          - "email"
+          - "userId"
+          - "profile"
+          - "data"
+        condition: and
+        
+      - type: status
+        status:
+          - 200
+          - 201
+        
+      - type: word
+        part: header
+        words:
+          - "application/json"
+          
+    extractors:
+      - type: json
+        part: body
+        json:
+          - ".userId"
+          - ".email"
+          - ".role"

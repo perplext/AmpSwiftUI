@@ -1,0 +1,92 @@
+id: mobile-api-security-headers
+info:
+  name: Mobile API Security Headers Check
+  author: AmpSwiftUI
+  severity: medium
+  description: Checks for missing or misconfigured security headers in mobile APIs
+  tags: mobile,api,headers,security,ios
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+      - "{{BaseURL}}/api"
+      - "{{BaseURL}}/graphql"
+      - "{{BaseURL}}/api/health"
+      
+    headers:
+      User-Agent: "MyApp/1.0 (com.example.myapp; build:1; iOS 17.0.0) Alamofire/5.6.1"
+      X-Device-Type: "iPhone"
+      X-OS-Version: "iOS 17.0"
+      X-App-Version: "1.0.0"
+      Accept: "application/json"
+      
+    matchers-condition: or
+    matchers:
+      - type: word
+        name: missing-security-headers
+        part: header
+        negative: true
+        words:
+          - "X-Content-Type-Options"
+          - "X-Frame-Options"
+          - "X-XSS-Protection"
+          - "Strict-Transport-Security"
+        condition: or
+        
+      - type: word
+        name: cors-misconfiguration
+        part: header
+        words:
+          - "Access-Control-Allow-Origin: *"
+          - "Access-Control-Allow-Credentials: true"
+        condition: and
+        
+      - type: word
+        name: sensitive-headers
+        part: header
+        words:
+          - "Server:"
+          - "X-Powered-By:"
+          - "X-AspNet-Version:"
+        condition: or
+        
+      - type: word
+        name: missing-rate-limit
+        part: header
+        negative: true
+        words:
+          - "X-RateLimit-Limit"
+          - "X-Rate-Limit"
+          - "RateLimit"
+        condition: and
+        
+    extractors:
+      - type: kval
+        name: security-headers
+        part: header
+        kval:
+          - "X-Content-Type-Options"
+          - "X-Frame-Options"
+          - "X-XSS-Protection"
+          - "Strict-Transport-Security"
+          - "Content-Security-Policy"
+          - "X-Permitted-Cross-Domain-Policies"
+          - "Referrer-Policy"
+          
+      - type: kval
+        name: cors-headers
+        part: header
+        kval:
+          - "Access-Control-Allow-Origin"
+          - "Access-Control-Allow-Methods"
+          - "Access-Control-Allow-Headers"
+          - "Access-Control-Allow-Credentials"
+          
+      - type: kval
+        name: server-info
+        part: header
+        kval:
+          - "Server"
+          - "X-Powered-By"
+          - "X-AspNet-Version"

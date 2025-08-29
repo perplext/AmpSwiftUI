@@ -1,0 +1,72 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Go
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+go.work
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Security
+*.key
+*.pem
+*.cer
+*.p12
+secrets.txt
+credentials.json
+.env
+
+# Testing
+*.log
+*.pcap
+*.dump
+results/
+output/
+tmp/
+
+# iOS specific
+*.ipa
+*.dSYM.zip
+*.dSYM
+*.xcworkspace
+*.xcuserdata
+Pods/
+Carthage/
+
+# Frida
+__handlers__/
+*.compiled.js
